@@ -8,6 +8,7 @@ import os
 import sys
 # import queue 
 import queue
+import gc
 import numpy as np
 import torch
 from facenet_pytorch import MTCNN, InceptionResnetV1, fixed_image_standardization, training
@@ -114,6 +115,7 @@ class ProcessVideo:
                 # sleep for 100ms to ensure that all frames are processed
                 time.sleep(0.1)
                 break   
+        cap.release()
         self.capture_done.set()   
     
     def face_detection_thread(self, frame_queue, face_queue):
@@ -139,7 +141,7 @@ class ProcessVideo:
                             face_queue.put((frame_num_, _face))
                          # Print the progress in a single line
                         print(f'\rProcessing frame {frame_num_} out of {self.total_frames} ({(frame_num_ / self.total_frames) * 100:.2f}%)', end='')
-
+                    
                     frame_collection = []
                     frame_num_collection = []
 
@@ -178,17 +180,17 @@ class ProcessVideo:
                         face_saving_path = f'{self.saving_folder}/{frame_num_}_{idx}.jpg'
                         # save face_ to face_saving_path
                         ## convert torch tensor to numpy array
-                        try:
-                            face_ = face_.detach().cpu()
-                        except:
-                            pass
-                        face_ = face_.numpy()
+                        
+                        face_img = face_.detach().cpu().numpy()
+                        
+                        
                         
                         # convert size to hwc
-                        face_ = face_.transpose(1,2,0)
+                        face_img = face_img.transpose(1,2,0)
                         #print('save image')
-                        cv2.imwrite(face_saving_path, face_)
+                        cv2.imwrite(face_saving_path, face_img)
                         # save face_encoding_ to all_faces database
+                        
                         self._collection_all_faces.insert_one({'video_name': self.video_path, \
                                                                 'video_URL': self.video_URL,\
                                                                 'video_FPS': self.video_FPS, \
@@ -199,8 +201,11 @@ class ProcessVideo:
                                                                 'timecode': self.frame_to_timecode(frame_num_, self.video_FPS)
                                                })
                         
-                    face_collection = []
-                    frame_num_collection = []
+                        
+                    face_collection.clear()
+                    frame_num_collection.clear()
+                    org_face_collection.clear()
+                    
             else:
                 # if the queue is empty, sleep for 10ms to prevent running out of memory
                 time.sleep(0.01)
@@ -223,6 +228,7 @@ class ProcessVideo:
         t1.join()
         t2.join()
         t3.join()
+        
         #print('Done')
 
 if __name__ == "__main__":

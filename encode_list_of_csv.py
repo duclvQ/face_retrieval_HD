@@ -8,6 +8,8 @@ import pandas as pd
 from pytube import YouTube
 import unicodedata
 import os
+import gc
+import time
 from pymongo import MongoClient
 class bcolors:
     HEADER = '\033[95m'
@@ -75,13 +77,13 @@ for line in lines:
     P._collection_video_urls = _collection_video_urls
     
     P.main_thread()
-    
+    del P
+    gc.set_threshold(1000, 15, 15)
     print("Processing video done, deleting video...")
     os.remove(file_path)
     print(f"{bcolors.FAIL}Deleted video")
     print(f"{bcolors.HEADER}Processing next video...")
-    
-    
+    time.sleep(1)
     
     
 
