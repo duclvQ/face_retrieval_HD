@@ -13,7 +13,7 @@ class CropFace:
             device = 'cpu'
         print('Running on device: {}'.format(device))
         
-        self.mtcnn = MTCNN(image_size=182, margin=10, min_face_size=50, thresholds=[0.8, 0.9, 0.9],keep_all=True, factor=0.709, post_process=True,device=device)  # initializing mtcnn for face detection
+        self.mtcnn = MTCNN(image_size=182, margin=10, min_face_size=50, thresholds=[0.8, 0.9, 0.9],keep_all=True, factor=0.709, post_process=False,device=device)  # initializing mtcnn for face detection
         self.save_dir = None
      
     

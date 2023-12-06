@@ -134,7 +134,7 @@ class ProcessVideo:
                             
                             #_face = np.expand_dims(face[face_num], axis=0)
                             _face = face[face_num]
-                           
+                            
                             #print(f'face shape of {face_num}',_face.shape)
                             face_queue.put((frame_num_, _face))
                          # Print the progress in a single line
@@ -163,9 +163,13 @@ class ProcessVideo:
                     break
                 
                 org_face_collection.append(face)
-                # remove first dimension of face
-                face = np.expand_dims(face, axis=0)
-                post_processed_face = fixed_image_standardization(torch.from_numpy(face))
+                
+                
+                #face = np.expand_dims(face, axis=0)
+                
+                post_processed_face = torch.Tensor(fixed_image_standardization(face))
+                
+                face_collection.append(post_processed_face)
                 frame_num_collection.append(frame_num)
                 if len(face_collection) == self.encoder.batch_size:
                     face_encoding = self.encoder(face_collection)
@@ -182,6 +186,7 @@ class ProcessVideo:
                         
                         # convert size to hwc
                         face_ = face_.transpose(1,2,0)
+                        #print('save image')
                         cv2.imwrite(face_saving_path, face_)
                         # save face_encoding_ to all_faces database
                         self._collection_all_faces.insert_one({'video_name': self.video_path, \
