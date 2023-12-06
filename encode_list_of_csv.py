@@ -63,7 +63,7 @@ for line in lines:
     P.video_URL = url
 
     P.saving_folder = os.path.join('/home/dev/face_retrieval/cropped_faces/', P.video_path.split('/')[-1].split('.')[0])
-    os.makedirs('/home/dev/face_retriveal/cropped_faces/', exist_ok=True)
+    os.makedirs('/home/dev/face_retrieval/cropped_faces/', exist_ok=True)
     P.client = MongoClient('mongodb://localhost:27017/')
     P.db_name = "faceDB"
     #P.collection_name = collection_name
