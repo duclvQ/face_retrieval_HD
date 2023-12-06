@@ -5,11 +5,13 @@ import threading
 import cv2
 import time
 import os
-import sys
+
 # import queue 
 import queue
 
+import sys
 sys.path.append('./')
+sys.path.append('../')
 # Create a connection to the MongoDB server
 # Create a connection to the MongoDB server
 client = MongoClient('mongodb://localhost:27017/')

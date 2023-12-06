@@ -17,6 +17,9 @@ to_pil = ToPILImage()
 # Ignore DeprecationWarning
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+import sys
+sys.path.append('./')
+sys.path.append('../')
 class FaceEncoder:
     def __init__(self, pretrained='vggface2', 
                  device = 0,
