@@ -4,10 +4,6 @@ import cv2
 import time
 import os
 
-import sys
-sys.path.append('./')
-sys.path.append('../')
-
 class CropFace:
     def __init__(self):
         self.total_number_frames = 0
@@ -52,11 +48,7 @@ class CropFace:
     def get_face_bbox(self, img): 
             boxes, _ = self.mtcnn.detect(img)
             return boxes
-        
-    def get_face_bbox_from_batch(self, batch):
-        boxes, _ = self.mtcnn.detect(batch)
-        return boxes
-         
+           
     def crop_face_from_batch(self, batch):
         # Detecting face in the image
         faces = self.mtcnn(batch)

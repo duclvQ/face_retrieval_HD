@@ -5,13 +5,13 @@ import threading
 import cv2
 import time
 import os
-
+import sys
 # import queue 
 import queue
-
-import sys
+import numpy as np
+import torch
+from facenet_pytorch import MTCNN, InceptionResnetV1, fixed_image_standardization, training
 sys.path.append('./')
-sys.path.append('../')
 # Create a connection to the MongoDB server
 # Create a connection to the MongoDB server
 client = MongoClient('mongodb://localhost:27017/')
@@ -125,18 +125,18 @@ class ProcessVideo:
                 frame_collection.append(frame)
                 frame_num_collection.append(frame_num)
                 if len(frame_collection) == self.encoder.batch_size:
-                    faces, faces_org = self.detector.crop_face_from_batch(frame_collection)
+                    faces = self.detector.crop_face_from_batch(frame_collection)
                    
-                    for frame_num_, face, face_org in zip(frame_num_collection, faces, faces_org):
+                    for frame_num_, face in zip(frame_num_collection, faces):
                         if face ==None:
                             continue
                         for face_num in range(face.shape[0]):
                             
                             #_face = np.expand_dims(face[face_num], axis=0)
                             _face = face[face_num]
-                            _face_org = face_org[face_num]
+                           
                             #print(f'face shape of {face_num}',_face.shape)
-                            face_queue.put((frame_num_, _face, _face_org))
+                            face_queue.put((frame_num_, _face))
                          # Print the progress in a single line
                         print(f'\rProcessing frame {frame_num_} out of {self.total_frames} ({(frame_num_ / self.total_frames) * 100:.2f}%)', end='')
 
@@ -154,32 +154,35 @@ class ProcessVideo:
     def face_encoding_thread(self, face_queue):
         face_collection = []
         frame_num_collection = []
-        face_org_collection = []
+        org_face_collection = []
         while True:
             if face_queue.qsize()>0:
-                frame_num, face, face_org = face_queue.get()
+                frame_num, face = face_queue.get()
                 if frame_num is None:
                     # None is the signal that the face detection thread is done
                     break
-                face_collection.append(face)
+                
+                org_face_collection.append(face)
+                # remove first dimension of face
+                face = np.expand_dims(face, axis=0)
+                post_processed_face = fixed_image_standardization(torch.from_numpy(face))
                 frame_num_collection.append(frame_num)
-                face_org_collection.append(face_org)    
                 if len(face_collection) == self.encoder.batch_size:
                     face_encoding = self.encoder(face_collection)
-                    for idx, (frame_num_, face_encoding_, face_, face_org_) in enumerate(zip(frame_num_collection, face_encoding, face_collection, face_org_collection)):
+                    for idx, (frame_num_, face_encoding_, face_) in enumerate(zip(frame_num_collection, face_encoding, org_face_collection)):
                         # get face number in collection
                         face_saving_path = f'{self.saving_folder}/{frame_num_}_{idx}.jpg'
                         # save face_ to face_saving_path
                         ## convert torch tensor to numpy array
                         try:
-                            face_org_ = face_org_.detach().cpu()
+                            face_ = face_.detach().cpu()
                         except:
                             pass
-                        face_org_ = face_org_.numpy()
+                        face_ = face_.numpy()
                         
                         # convert size to hwc
-                        face_org_ = face_org_.transpose(1,2,0)
-                        cv2.imwrite(face_saving_path, face_org_)
+                        face_ = face_.transpose(1,2,0)
+                        cv2.imwrite(face_saving_path, face_)
                         # save face_encoding_ to all_faces database
                         self._collection_all_faces.insert_one({'video_name': self.video_path, \
                                                                 'video_URL': self.video_URL,\
