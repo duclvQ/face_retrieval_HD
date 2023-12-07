@@ -26,7 +26,7 @@ collection_video_urls = "videoURLs"
 class ProcessVideo:
     def __init__(self, stride=5, \
                     device=0, \
-                    pretrained='vggface2',\
+                    pretrained='casia-webface',\
                     batch_size=32,
                     
                         ):
