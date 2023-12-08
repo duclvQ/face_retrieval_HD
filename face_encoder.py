@@ -75,7 +75,9 @@ class FaceEncoder:
             image = to_pil(image)
             image = self.transform(image)
             image_list.append(image)
+            del image
         image_tensor = torch.stack(image_list)  # Create a tensor from the list of images
+        del image_list
         return image_tensor.to(self.device)
         
     

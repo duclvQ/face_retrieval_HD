@@ -8,6 +8,7 @@ import os
 import sys
 # import queue 
 import queue
+import gc
 import numpy as np
 import torch
 from facenet_pytorch import MTCNN, InceptionResnetV1, fixed_image_standardization, training
@@ -21,12 +22,13 @@ collection_all_faces = "allFaceRecords"
 collection_video_urls = "videoURLs"
 
 
-
+from memory_profiler import profile
 class ProcessVideo:
+    @profile
     def __init__(self, stride=5, \
                     device=0, \
-                    pretrained='vggface2',\
-                    batch_size=32,
+                    pretrained='casia-webface',\
+                    batch_size=16,
                     
                         ):
         self.video_path = None
@@ -114,6 +116,7 @@ class ProcessVideo:
                 # sleep for 100ms to ensure that all frames are processed
                 time.sleep(0.1)
                 break   
+        cap.release()
         self.capture_done.set()   
     
     def face_detection_thread(self, frame_queue, face_queue):
@@ -122,9 +125,13 @@ class ProcessVideo:
         while True:
             if frame_queue.qsize()>0:
                 frame_num, frame = frame_queue.get()
+                #mock =  np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
                 frame_collection.append(frame)
+                #print('size:', sys.getsizeof(frame_queue))
                 frame_num_collection.append(frame_num)
                 if len(frame_collection) == self.encoder.batch_size:
+                #if len(frame_collection) == 1:
+                    
                     faces = self.detector.crop_face_from_batch(frame_collection)
                    
                     for frame_num_, face in zip(frame_num_collection, faces):
@@ -134,12 +141,12 @@ class ProcessVideo:
                             
                             #_face = np.expand_dims(face[face_num], axis=0)
                             _face = face[face_num]
-                           
+                            
                             #print(f'face shape of {face_num}',_face.shape)
-                            face_queue.put((frame_num_, _face))
+                            #face_queue.put((frame_num_, _face))
                          # Print the progress in a single line
                         print(f'\rProcessing frame {frame_num_} out of {self.total_frames} ({(frame_num_ / self.total_frames) * 100:.2f}%)', end='')
-
+                    
                     frame_collection = []
                     frame_num_collection = []
 
@@ -163,9 +170,13 @@ class ProcessVideo:
                     break
                 
                 org_face_collection.append(face)
-                # remove first dimension of face
-                face = np.expand_dims(face, axis=0)
-                post_processed_face = fixed_image_standardization(torch.from_numpy(face))
+                
+                
+                #face = np.expand_dims(face, axis=0)
+                
+                post_processed_face = torch.Tensor(fixed_image_standardization(face))
+                
+                face_collection.append(post_processed_face)
                 frame_num_collection.append(frame_num)
                 if len(face_collection) == self.encoder.batch_size:
                     face_encoding = self.encoder(face_collection)
@@ -174,16 +185,17 @@ class ProcessVideo:
                         face_saving_path = f'{self.saving_folder}/{frame_num_}_{idx}.jpg'
                         # save face_ to face_saving_path
                         ## convert torch tensor to numpy array
-                        try:
-                            face_ = face_.detach().cpu()
-                        except:
-                            pass
-                        face_ = face_.numpy()
+                        
+                        face_img = face_.detach().cpu().numpy()
+                        
+                        
                         
                         # convert size to hwc
-                        face_ = face_.transpose(1,2,0)
-                        cv2.imwrite(face_saving_path, face_)
+                        face_img = face_img.transpose(1,2,0)
+                        #print('save image')
+                        cv2.imwrite(face_saving_path, face_img)
                         # save face_encoding_ to all_faces database
+                        
                         self._collection_all_faces.insert_one({'video_name': self.video_path, \
                                                                 'video_URL': self.video_URL,\
                                                                 'video_FPS': self.video_FPS, \
@@ -194,8 +206,11 @@ class ProcessVideo:
                                                                 'timecode': self.frame_to_timecode(frame_num_, self.video_FPS)
                                                })
                         
-                    face_collection = []
-                    frame_num_collection = []
+                        
+                    face_collection.clear()
+                    frame_num_collection.clear()
+                    org_face_collection.clear()
+                    
             else:
                 # if the queue is empty, sleep for 10ms to prevent running out of memory
                 time.sleep(0.01)
@@ -218,6 +233,21 @@ class ProcessVideo:
         t1.join()
         t2.join()
         t3.join()
+        while not frame_queue.empty():
+            try:
+                frame_queue.get_nowait()  # or q.get(timeout=0.1)
+            except queue.Empty:
+                break
+            frame_queue.task_done()
+        while not face_queue.empty():
+            try:
+                face_queue.get_nowait()  # or q.get(timeout=0.1)
+            except queue.Empty:
+                break
+            face_queue.task_done()
+        
+        
+        
         #print('Done')
 
 if __name__ == "__main__":

@@ -8,7 +8,10 @@ import pandas as pd
 from pytube import YouTube
 import unicodedata
 import os
+import gc
+import time
 from pymongo import MongoClient
+from memory_profiler import profile
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -20,23 +23,34 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
     
-def download_video_from_youtube(link, path):
-    try:
-        yt = YouTube(link)
-        video = yt.streams.get_highest_resolution()
-        # save the name of the video as unicode and unsigned
-        video_name = unicodedata.normalize('NFKD', video.title).encode('ascii', 'ignore').decode('utf-8')
-        video_name = video_name.replace(' ', '_')
-        video_name = video_name.replace('\"', '_')
-        video_name = video_name.replace('\'', '_')
-        # download the video
-        video.download(path, filename=video_name+'.mp4')
-        return os.path.join(path, video_name+'.mp4')
-    except AgeRestrictedError:
-        print(f"{bcolors.WARNING}Skipping age-restricted video: {link}")
-        # download the video
-        #video.download(path)
-        return None
+from pytube.exceptions import AgeRestrictedError
+from http.client import IncompleteRead
+from pytube.exceptions import VideoUnavailable
+def download_video_from_youtube(link, path, retries=3):
+    for _ in range(retries):
+        try:
+            yt = YouTube(link)
+            video = yt.streams.get_highest_resolution()
+            # save the name of the video as unicode and unsigned
+            video_name = unicodedata.normalize('NFKD', video.title).encode('ascii', 'ignore').decode('utf-8')
+            video_name = video_name.replace(' ', '_')
+            video_name = video_name.replace('\"', '_')
+            video_name = video_name.replace('\'', '_')
+            video_name = video_name.replace('/', '_')
+            video_name = video_name.replace(',', '_')
+            # download the video
+            video.download(path, filename=video_name+'.mp4')
+            return os.path.join(path, video_name+'.mp4')
+        except AgeRestrictedError:
+            print(f"{bcolors.WARNING}Skipping age-restricted video: {link}")
+            return None
+        except IncompleteRead:
+            print('Incomplete read, retrying download...')
+        except VideoUnavailable:
+            print(f"Video {link} is unavailable")
+            return None
+    print('Failed to download video after multiple attempts')
+    return None
   
 csv_file = 'vtv24_url.csv'
 save_path = '/home/dev/face_retrieval/videos'
@@ -47,7 +61,7 @@ lines = lines['urls']
 
 os.makedirs(save_path, exist_ok=True)
 # download the video, process the video, delete the video
-for line in lines:
+for line in lines[29:]:
     
     
     url = line.split(' ')[-1]
@@ -75,13 +89,14 @@ for line in lines:
     P._collection_video_urls = _collection_video_urls
     
     P.main_thread()
-    
+    gc.collect()
+    del P
+    gc.set_threshold(1000, 15, 15)
     print("Processing video done, deleting video...")
     os.remove(file_path)
     print(f"{bcolors.FAIL}Deleted video")
     print(f"{bcolors.HEADER}Processing next video...")
-    
-    
+    time.sleep(1)
     
     
 
