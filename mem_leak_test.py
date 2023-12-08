@@ -10,8 +10,9 @@ for _ in range(100):
         #resnet = InceptionResnetV1(pretrained='vggface2').eval()
         from PIL import Image
         img_list = []
+        img = Image.open('./my_source/test2.jpg')
         for i in range(10000):
-            img = Image.open('./my_source/test2.jpg')
+            
             img_list.append(img)
             if len(img_list)==16:
                 # Get cropped and prewhitened image tensor

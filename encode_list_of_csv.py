@@ -59,9 +59,11 @@ save_path = '/home/dev/face_retrieval/videos'
 lines = pd.read_csv(csv_file)
 lines = lines['urls']
 
+
 os.makedirs(save_path, exist_ok=True)
 # download the video, process the video, delete the video
-for line in lines[29:]:
+P = ProcessVideo()
+for line in lines[:]:
     
     
     url = line.split(' ')[-1]
@@ -72,10 +74,10 @@ for line in lines[29:]:
         continue
     print(f'{bcolors.OKGREEN}Downloaded video to: ', file_path)
     print('Processing video...')
-    P = ProcessVideo()
+    
     P.video_path = file_path
     P.video_URL = url
-
+    P.capture_done.clear()
     P.saving_folder = os.path.join('/home/dev/face_retrieval/cropped_faces/', P.video_path.split('/')[-1].split('.')[0])
     os.makedirs('/home/dev/face_retrieval/cropped_faces/', exist_ok=True)
     P.client = MongoClient('mongodb://localhost:27017/')
@@ -89,8 +91,9 @@ for line in lines[29:]:
     P._collection_video_urls = _collection_video_urls
     
     P.main_thread()
-    del P
-    gc.set_threshold(1000, 15, 15)
+    
+    
+    
     print("Processing video done, deleting video...")
     os.remove(file_path)
     print(f"{bcolors.FAIL}Deleted video")
