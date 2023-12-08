@@ -22,12 +22,13 @@ collection_all_faces = "allFaceRecords"
 collection_video_urls = "videoURLs"
 
 
-
+from memory_profiler import profile
 class ProcessVideo:
+    @profile
     def __init__(self, stride=5, \
                     device=0, \
                     pretrained='casia-webface',\
-                    batch_size=32,
+                    batch_size=16,
                     
                         ):
         self.video_path = None
@@ -124,9 +125,13 @@ class ProcessVideo:
         while True:
             if frame_queue.qsize()>0:
                 frame_num, frame = frame_queue.get()
+                #mock =  np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
                 frame_collection.append(frame)
+                #print('size:', sys.getsizeof(frame_queue))
                 frame_num_collection.append(frame_num)
                 if len(frame_collection) == self.encoder.batch_size:
+                #if len(frame_collection) == 1:
+                    
                     faces = self.detector.crop_face_from_batch(frame_collection)
                    
                     for frame_num_, face in zip(frame_num_collection, faces):
@@ -138,7 +143,7 @@ class ProcessVideo:
                             _face = face[face_num]
                             
                             #print(f'face shape of {face_num}',_face.shape)
-                            face_queue.put((frame_num_, _face))
+                            #face_queue.put((frame_num_, _face))
                          # Print the progress in a single line
                         print(f'\rProcessing frame {frame_num_} out of {self.total_frames} ({(frame_num_ / self.total_frames) * 100:.2f}%)', end='')
                     
@@ -228,6 +233,20 @@ class ProcessVideo:
         t1.join()
         t2.join()
         t3.join()
+        while not frame_queue.empty():
+            try:
+                frame_queue.get_nowait()  # or q.get(timeout=0.1)
+            except queue.Empty:
+                break
+            frame_queue.task_done()
+        while not face_queue.empty():
+            try:
+                face_queue.get_nowait()  # or q.get(timeout=0.1)
+            except queue.Empty:
+                break
+            face_queue.task_done()
+        
+        
         
         #print('Done')
 
