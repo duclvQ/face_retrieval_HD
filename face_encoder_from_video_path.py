@@ -25,11 +25,7 @@ lock = threading.Lock()
 
 from memory_profiler import profile
 class ProcessVideo:
-<<<<<<< HEAD
-    @profile
-=======
     #@profile
->>>>>>> ff8c2f3526c1c71dc69c724f8e03b94fa4d23c9b
     def __init__(self, stride=5, \
                     device=0, \
                     pretrained='casia-webface',\
@@ -101,6 +97,7 @@ class ProcessVideo:
         
         previous_progress = 0
         while True:
+            # sleep for 50ms to prevent running out of memory
             if frame_queue.qsize()>64:
                 time.sleep(0.05)
                 continue
@@ -142,6 +139,7 @@ class ProcessVideo:
                 print("frame_queue :",frame_queue.qsize())
                 #size = sys.getsizeof(frame_collection)
                 #print(f"The size of the frame_queue is approximately {size} bytes")
+                #sleep for 10ms to prevent running out of memory
                 if face_queue.qsize()>64:
                     time.sleep(0.01)
                     continue
@@ -165,14 +163,6 @@ class ProcessVideo:
                             _face = face[face_num]
                             
                             #print(f'face shape of {face_num}',_face.shape)
-<<<<<<< HEAD
-                            #face_queue.put((frame_num_, _face))
-                         # Print the progress in a single line
-                        print(f'\rProcessing frame {frame_num_} out of {self.total_frames} ({(frame_num_ / self.total_frames) * 100:.2f}%)', end='')
-                    
-                    frame_collection = []
-                    frame_num_collection = []
-=======
                            
                             face_queue.put((frame_num_, _face))
 
@@ -181,7 +171,6 @@ class ProcessVideo:
                     
                     frame_collection.clear()
                     frame_num_collection.clear()
->>>>>>> ff8c2f3526c1c71dc69c724f8e03b94fa4d23c9b
 
             else:
                 if self.capture_done.is_set():
@@ -282,45 +271,9 @@ class ProcessVideo:
             print(frame_queue.qsize())
             print(face_queue.qsize())
 
-        
-        
-        
-<<<<<<< HEAD
-        frame_queue = queue.Queue()
-        face_queue = queue.Queue()
-        t1 = threading.Thread(target=self.read_video_thread, args=(self.video_path, frame_queue))
-        t2 = threading.Thread(target=self.face_detection_thread, args=(frame_queue, face_queue))
-        t3 = threading.Thread(target=self.face_encoding_thread, args=(face_queue,))
-        t1.start()
-        #print('Capture thread started')
-        t2.start()
-        #print('Detection thread started')
-        t3.start()
-        #print('Encoding thread started')
-        t1.join()
-        t2.join()
-        t3.join()
-        while not frame_queue.empty():
-            try:
-                frame_queue.get_nowait()  # or q.get(timeout=0.1)
-            except queue.Empty:
-                break
-            frame_queue.task_done()
-        while not face_queue.empty():
-            try:
-                face_queue.get_nowait()  # or q.get(timeout=0.1)
-            except queue.Empty:
-                break
-            face_queue.task_done()
-        
-        
-        
-=======
->>>>>>> ff8c2f3526c1c71dc69c724f8e03b94fa4d23c9b
-        #print('Done')
 
 if __name__ == "__main__":
- 
+
     P = ProcessVideo()
     P.video_path = '/home/dev/face_retrieval/videos/video_1.mp4'
     P.video_URL = 'http://example.com/' + P.video_path
