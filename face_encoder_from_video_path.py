@@ -26,7 +26,7 @@ lock = threading.Lock()
 from memory_profiler import profile
 class ProcessVideo:
     #@profile
-    def __init__(self, stride=5, \
+    def __init__(self, stride=30, \
                     device=0, \
                     pretrained='casia-webface',\
                     batch_size=16,
@@ -136,14 +136,14 @@ class ProcessVideo:
         frame_num_collection = []
         while True:
             if frame_queue.qsize()>0:
-                print("frame_queue :",frame_queue.qsize())
+                #print("frame_queue :",frame_queue.qsize())
                 #size = sys.getsizeof(frame_collection)
                 #print(f"The size of the frame_queue is approximately {size} bytes")
                 #sleep for 10ms to prevent running out of memory
                 if face_queue.qsize()>64:
                     time.sleep(0.01)
                     continue
-                print('face_queue:',face_queue.qsize())
+                #print('face_queue:',face_queue.qsize())
                 frame_num, frame = frame_queue.get()
                 #mock =  np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
                 frame_collection.append(frame)
@@ -174,12 +174,12 @@ class ProcessVideo:
 
             else:
                 if self.capture_done.is_set():
-                    gc.collect()
+                    
                     print("break in detect")
                     break
                     
                 else:
-                    print("sleep in detect thread")
+                    #print("sleep in detect thread")
                     # if the queue is empty, sleep for 10ms to prevent running out of memory
                     
                     time.sleep(0.01)
@@ -198,7 +198,7 @@ class ProcessVideo:
                 frame_num, face = face_queue.get()
                 if frame_num is None:
                     # None is the signal that the face detection thread is done
-                    gc.collect()
+                   
                     break
                 
                 org_face_collection.append(face)

@@ -66,9 +66,10 @@ def check_if_url_is_in_database(url, collection_name):
     db_name = "faceDB"
     collection_name = collection_name
     collection = client[db_name][collection_name]
-    if collection.find_one({'url':url}) is None:
+    if collection.find_one({'video_URL':url}) is None:
         return False
     return True
+import chardet
 
 while True:
     
@@ -82,62 +83,66 @@ while True:
     
 
     # read the csv file
-    lines = pd.read_csv(csv_file)
-    lines = lines['urls']
-
-
+    #lines = pd.read_csv(csv_file)
+    #lines = lines['urls']
+    
+    lines = pd.read_csv(csv_file)['urls']
+    print(lines)
     os.makedirs(save_path, exist_ok=True)
     # download the video, process the video, delete the video
     P = ProcessVideo()
     for line in lines[:]:
-        if ' ' in line:
-            url = line.split(' ')[-1]
-        else:
-            url = line
-        if check_if_url_is_in_database(url, 'allFaceRecords'):
-            print(f"{bcolors.WARNING}Video {url} is already in the database, skipping...{line}")
+        try:
+            if ' ' in line:
+                url = line.split(' ')[-1]
+            else:
+                url = line
+            if check_if_url_is_in_database(url, 'allFaceRecords'):
+                print(f"{bcolors.WARNING}Video {url} is already in the database, skipping...{line}")
+                continue
+            
+            
+            print(f"{bcolors.OKGREEN}Downloading video...{line}")
+            file_path = download_video_from_youtube(url, save_path)
+            if file_path == None:
+                print(f'{bcolors.FAIL}Download failed, skipping...')
+                continue
+            print(f'{bcolors.OKGREEN}Downloaded video to: ', file_path)
+            print('Processing video...')
+            
+            
+            
+            P.video_path = file_path
+            P.video_URL = url
+            P.capture_done.clear()
+            # add time to save folder
+            current_time = time.time()
+            
+            P.saving_folder = os.path.join('/home/dev/face_retrieval/cropped_faces/', P.video_path.split('/')[-1].split('.')[0]+'_'+str(current_time))
+            os.makedirs('/home/dev/face_retrieval/cropped_faces/', exist_ok=True)
+            P.client = MongoClient('mongodb://localhost:27017/')
+            P.db_name = "faceDB"
+            #P.collection_name = collection_name
+            collection_all_faces = "allFaceRecords"
+            collection_video_urls = "videoURLs"
+            _collection_all_faces = P.client[P.db_name][collection_all_faces]
+            _collection_video_urls = P.client[P.db_name][collection_video_urls]
+            P._collection_all_faces = _collection_all_faces
+            P._collection_video_urls = _collection_video_urls
+            
+            P.main_thread()
+            
+            
+            
+            print("Processing video done, deleting video...")
+            os.remove(file_path)
+            print(f"{bcolors.FAIL}Deleted video")
+            print(f"{bcolors.HEADER}Processing next video...")
+            gc.collect()
+        except:
             continue
-        
-        
-        print(f"{bcolors.OKGREEN}Downloading video...{line}")
-        file_path = download_video_from_youtube(url, save_path)
-        if file_path == None:
-            print(f'{bcolors.FAIL}Download failed, skipping...')
-            continue
-        print(f'{bcolors.OKGREEN}Downloaded video to: ', file_path)
-        print('Processing video...')
-        
-        
-        
-        P.video_path = file_path
-        P.video_URL = url
-        P.capture_done.clear()
-        # add time to save folder
-        current_time = time.time()
-        
-        P.saving_folder = os.path.join('/home/dev/face_retrieval/cropped_faces/', P.video_path.split('/')[-1].split('.')[0]+'_'+str(current_time)
-        os.makedirs('/home/dev/face_retrieval/cropped_faces/', exist_ok=True)
-        P.client = MongoClient('mongodb://localhost:27017/')
-        P.db_name = "faceDB"
-        #P.collection_name = collection_name
-        collection_all_faces = "allFaceRecords"
-        collection_video_urls = "videoURLs"
-        _collection_all_faces = P.client[P.db_name][collection_all_faces]
-        _collection_video_urls = P.client[P.db_name][collection_video_urls]
-        P._collection_all_faces = _collection_all_faces
-        P._collection_video_urls = _collection_video_urls
-        
-        P.main_thread()
-        
-        
-        
-        print("Processing video done, deleting video...")
-        os.remove(file_path)
-        print(f"{bcolors.FAIL}Deleted video")
-        print(f"{bcolors.HEADER}Processing next video...")
-        gc.collect()
         # remove csv file after processing
-        os.remove(csv_file)
+    os.remove(csv_file)
     
     
 
